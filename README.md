@@ -132,3 +132,12 @@ Também é recomendado implementar auditoria de alterações financeiras, confir
 - Dashboard sincronizado: Saldo do dia = Pix + Cartão + Dinheiro − Gastos.
 - O card Gastos agora soma os gastos do dia + as saídas manuais do dia.
 - Nova chave de armazenamento para iniciar os testes desta correção sem dados antigos.
+
+
+## Versão Supabase V1
+- Projeto configurado para o Supabase: `https://uejphakuneilzxsrcdzq.supabase.co`
+- Usa chave Publishable no navegador.
+- Login real via Supabase Auth.
+- Pedidos, gastos e saídas sincronizam com o banco.
+- O LocalStorage permanece como cache/backup local.
+- IMPORTANTE: rode o arquivo `supabase.sql` atualizado mais uma vez apenas para criar a tabela `outflows` e adicionar as colunas `business_date` / `paid_date`.

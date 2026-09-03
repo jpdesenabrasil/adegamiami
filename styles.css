@@ -423,3 +423,5 @@ body{
 .outflow-stat-card strong{
   color:#c62828;
 }
+
+.login-error{min-height:20px;color:#c62828;font-size:14px;font-weight:700}

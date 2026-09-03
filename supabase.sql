@@ -104,3 +104,29 @@ with check (public.current_role()='employee');
 -- rode algo assim trocando pelo UUID dele:
 -- insert into profiles (id, name, role)
 -- values ('UUID_DO_USUARIO', 'Administrador', 'owner');
+
+
+-- Saídas manuais do caixa
+create table if not exists outflows (
+  id uuid primary key default gen_random_uuid(),
+  description text not null,
+  value numeric(12,2) not null default 0,
+  method text check (method in ('pix','cash','credit','debit','other')),
+  date date not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_outflows_date on outflows(date);
+alter table outflows enable row level security;
+
+create policy "owner all outflows" on outflows
+for all using (public.current_role()='owner')
+with check (public.current_role()='owner');
+
+create policy "cashier all outflows" on outflows
+for all using (public.current_role()='cashier')
+with check (public.current_role()='cashier');
+
+
+alter table orders add column if not exists business_date date;
+alter table orders add column if not exists paid_date date;

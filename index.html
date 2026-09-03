@@ -289,6 +289,19 @@
     </main>
   </div>
 
+
+  <dialog id="loginModal">
+    <form method="dialog" class="modal-card" id="loginForm">
+      <div class="modal-head"><h3>Entrar no Adega Miami</h3></div>
+      <label>E-mail<input required type="email" id="loginEmail" autocomplete="username" /></label>
+      <label>Senha<input required type="password" id="loginPassword" autocomplete="current-password" /></label>
+      <div id="loginError" class="login-error"></div>
+      <div class="modal-actions">
+        <button type="submit" value="default" class="primary-btn">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="orderModal">
     <form method="dialog" class="modal-card" id="orderForm">
       <div class="modal-head"><h3 id="orderModalTitle">Novo pedido</h3><button value="cancel" class="icon-btn">✕</button></div>

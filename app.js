@@ -1,8 +1,8 @@
 
 // ADEGA MIAMI — Protótipo funcional
 // Para usar Supabase, preencha estas duas variáveis.
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL = "https://uejphakuneilzxsrcdzq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Sy3loBK8JoIdGRdxF7OH2w_UdSfvb31";
 
 const supabaseClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -119,6 +119,151 @@ let draggedOrderId = null;
 let selectedOrderISO = todayISO();
 let selectedFinanceISO = todayISO();
 
+
+async function loadFromSupabase(){
+  if(!supabaseClient) return false;
+
+  const {data:{session}} = await supabaseClient.auth.getSession();
+  if(!session) return false;
+
+  const [ordersRes, expensesRes, outflowsRes] = await Promise.all([
+    supabaseClient.from("orders").select("*").order("created_at",{ascending:false}),
+    supabaseClient.from("expenses").select("*").order("created_at",{ascending:false}),
+    supabaseClient.from("outflows").select("*").order("created_at",{ascending:false})
+  ]);
+
+  if(ordersRes.error) throw ordersRes.error;
+  if(expensesRes.error) throw expensesRes.error;
+  if(outflowsRes.error) throw outflowsRes.error;
+
+  state.orders=(ordersRes.data||[]).map(o=>({
+    id:o.id,
+    name:o.client_name,
+    phone:o.client_phone||"",
+    items:o.items,
+    value:Number(o.value||0),
+    payment_method:o.payment_method,
+    payment_status:o.payment_status,
+    status:o.status,
+    business_date:o.business_date || localDateKey(o.created_at),
+    paid_date:o.paid_date || (o.paid_at ? localDateKey(o.paid_at) : null),
+    paid_at:o.paid_at,
+    created_at:o.created_at
+  }));
+
+  state.expenses=(expensesRes.data||[]).map(e=>({
+    id:e.id,
+    description:e.description,
+    category:e.category||"",
+    value:Number(e.value||0),
+    due_date:e.due_date,
+    paid:Boolean(e.paid),
+    recurring:Boolean(e.recurring),
+    created_at:e.created_at
+  }));
+
+  state.outflows=(outflowsRes.data||[]).map(o=>({
+    id:o.id,
+    description:o.description,
+    value:Number(o.value||0),
+    method:o.method,
+    date:o.date,
+    created_at:o.created_at
+  }));
+
+  localStorage.setItem(storageKey,JSON.stringify(state));
+  renderAll();
+  return true;
+}
+
+async function syncOrderToSupabase(order){
+  if(!supabaseClient) return;
+  const payload={
+    client_name:order.name,
+    client_phone:order.phone||null,
+    items:order.items,
+    value:Number(order.value||0),
+    payment_method:order.payment_method,
+    payment_status:order.payment_status,
+    status:order.status,
+    paid_at:order.paid_at||null,
+    business_date:order.business_date||orderCreatedDate(order),
+    paid_date:order.paid_date||null
+  };
+  const isUuid=typeof order.id==="string" && /^[0-9a-f-]{36}$/i.test(order.id);
+  let res;
+  if(isUuid){
+    res=await supabaseClient.from("orders").update(payload).eq("id",order.id).select().single();
+  }else{
+    res=await supabaseClient.from("orders").insert(payload).select().single();
+    if(!res.error && res.data) order.id=res.data.id;
+  }
+  if(res.error) throw res.error;
+}
+
+async function deleteOrderFromSupabase(id){
+  if(!supabaseClient || !(typeof id==="string" && /^[0-9a-f-]{36}$/i.test(id))) return;
+  const {error}=await supabaseClient.from("orders").delete().eq("id",id);
+  if(error) throw error;
+}
+
+async function syncExpenseToSupabase(expense){
+  if(!supabaseClient) return;
+  const payload={
+    description:expense.description,
+    category:expense.category||null,
+    value:Number(expense.value||0),
+    due_date:expense.due_date,
+    paid:Boolean(expense.paid),
+    recurring:Boolean(expense.recurring)
+  };
+  const isUuid=typeof expense.id==="string" && /^[0-9a-f-]{36}$/i.test(expense.id);
+  let res;
+  if(isUuid){
+    res=await supabaseClient.from("expenses").update(payload).eq("id",expense.id).select().single();
+  }else{
+    res=await supabaseClient.from("expenses").insert(payload).select().single();
+    if(!res.error && res.data) expense.id=res.data.id;
+  }
+  if(res.error) throw res.error;
+}
+
+async function deleteExpenseFromSupabase(id){
+  if(!supabaseClient || !(typeof id==="string" && /^[0-9a-f-]{36}$/i.test(id))) return;
+  const {error}=await supabaseClient.from("expenses").delete().eq("id",id);
+  if(error) throw error;
+}
+
+async function syncOutflowToSupabase(outflow){
+  if(!supabaseClient) return;
+  const payload={
+    description:outflow.description,
+    value:Number(outflow.value||0),
+    method:outflow.method,
+    date:outflow.date
+  };
+  const isUuid=typeof outflow.id==="string" && /^[0-9a-f-]{36}$/i.test(outflow.id);
+  let res;
+  if(isUuid){
+    res=await supabaseClient.from("outflows").update(payload).eq("id",outflow.id).select().single();
+  }else{
+    res=await supabaseClient.from("outflows").insert(payload).select().single();
+    if(!res.error && res.data) outflow.id=res.data.id;
+  }
+  if(res.error) throw res.error;
+}
+
+async function loginSupabase(email,password){
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error) throw error;
+  await loadFromSupabase();
+  return data;
+}
+
+async function logoutSupabase(){
+  if(supabaseClient) await supabaseClient.auth.signOut();
+}
+
 function seedState(){
   return {
     orders: [],
@@ -140,12 +285,30 @@ function saveState(){
   saveDailyLocalBackup();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("connectionStatus").textContent = supabaseClient ? "Supabase conectado" : "Modo demonstração";
   document.getElementById("todayLabel").textContent = new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
   bindUI();
   saveDailyLocalBackup();
-  renderAll();
+
+  if(supabaseClient){
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    if(session){
+      try{
+        await loadFromSupabase();
+        document.getElementById("connectionStatus").textContent="Online • Supabase";
+      }catch(err){
+        console.error(err);
+        document.getElementById("connectionStatus").textContent="Erro ao sincronizar";
+        renderAll();
+      }
+    }else{
+      renderAll();
+      document.getElementById("loginModal").showModal();
+    }
+  }else{
+    renderAll();
+  }
   updateBackupStatus();
 });
 
@@ -157,6 +320,21 @@ function bindUI(){
     document.getElementById("outflowModal").showModal();
   };
   document.getElementById("newExpenseBtn").onclick=()=>document.getElementById("expenseModal").showModal();
+  document.getElementById("loginForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const email=document.getElementById("loginEmail").value.trim();
+    const password=document.getElementById("loginPassword").value;
+    const errorEl=document.getElementById("loginError");
+    errorEl.textContent="";
+    try{
+      await loginSupabase(email,password);
+      document.getElementById("loginModal").close();
+      document.getElementById("connectionStatus").textContent="Online • Supabase";
+    }catch(err){
+      errorEl.textContent="Não foi possível entrar. Confira e-mail e senha.";
+      console.error(err);
+    }
+  });
   document.getElementById("orderForm").addEventListener("submit", saveOrder);
   document.getElementById("expenseForm").addEventListener("submit", saveExpense);
   document.getElementById("outflowForm").addEventListener("submit", saveOutflow);
@@ -217,7 +395,7 @@ function openOrderModal(order=null){
   document.getElementById("orderModal").showModal();
 }
 
-function saveOrder(e){
+async function saveOrder(e){
   e.preventDefault();
   const id=document.getElementById("orderId").value;
   const data={
@@ -250,6 +428,20 @@ function saveOrder(e){
   }
 
   saveState();
+  const savedOrder=id
+    ? state.orders.find(o=>String(o.id)===String(id))
+    : state.orders[0];
+
+  if(supabaseClient){
+    try{
+      await syncOrderToSupabase(savedOrder);
+      saveState();
+    }catch(err){
+      console.error(err);
+      alert("O pedido foi salvo localmente, mas houve erro ao enviar ao Supabase.");
+    }
+  }
+
   document.getElementById("orderModal").close();
   renderAll();
 
@@ -328,9 +520,28 @@ function orderCard(o){
     <div class="order-actions">${moveBtns}<button onclick="editOrder(${o.id})">Editar</button><button onclick="deleteOrder(${o.id})">Excluir</button></div>
   </article>`;
 }
-function moveOrder(id,status){const o=state.orders.find(x=>x.id===id);if(o){o.status=status;saveState();renderAll()}}
+async function moveOrder(id,status){
+  const o=state.orders.find(x=>x.id===id);
+  if(o){
+    o.status=status;
+    saveState();
+    renderAll();
+    if(supabaseClient){
+      try{await syncOrderToSupabase(o);saveState()}catch(err){console.error(err)}
+    }
+  }
+}
 function editOrder(id){openOrderModal(state.orders.find(o=>o.id===id))}
-function deleteOrder(id){if(confirm("Excluir este pedido?")){state.orders=state.orders.filter(o=>o.id!==id);saveState();renderAll()}}
+async function deleteOrder(id){
+  if(confirm("Excluir este pedido?")){
+    state.orders=state.orders.filter(o=>o.id!==id);
+    saveState();
+    renderAll();
+    if(supabaseClient){
+      try{await deleteOrderFromSupabase(id)}catch(err){console.error(err)}
+    }
+  }
+}
 
 function orderCreatedDate(o){
   return o.business_date || localDateKey(o.created_at);
@@ -459,11 +670,12 @@ function renderDebts(){
     <div class="debt-actions"><button class="primary-btn" onclick="receiveDebt(${o.id})">Receber pagamento</button></div>
   </article>`).join(""):`<div class="no-debt-message">✓ Nenhuma dívida em aberto.</div>`;
 }
-function receiveDebt(id){
+async function receiveDebt(id){
   const o=state.orders.find(x=>x.id===id); if(!o)return;
   const method=prompt("Forma de pagamento: pix, cash, credit ou debit","pix");
   if(!["pix","cash","credit","debit"].includes(method||"")) return alert("Forma inválida.");
   o.payment_method=method;o.payment_status="paid";o.paid_at=nowISO();o.paid_date=todayISO();saveState();renderAll();
+  if(supabaseClient){try{await syncOrderToSupabase(o);saveState()}catch(err){console.error(err)}}
 }
 
 function renderFinance(){
@@ -598,7 +810,7 @@ function exportDayHistory(){
 }
 
 
-function saveOutflow(e){
+async function saveOutflow(e){
   e.preventDefault();
   const description=document.getElementById("outflowDescription").value.trim();
   const value=Number(document.getElementById("outflowValue").value);
@@ -610,26 +822,35 @@ function saveOutflow(e){
     return;
   }
 
-  state.outflows.unshift({
+  const newOutflow={
     id:Date.now(),
     description,
     value,
     method,
     date,
     created_at:nowISO()
-  });
+  };
+  state.outflows.unshift(newOutflow);
 
   saveState();
+  if(supabaseClient){
+    try{await syncOutflowToSupabase(newOutflow);saveState()}catch(err){console.error(err);alert("Saída salva localmente, mas houve erro ao sincronizar.")}
+  }
   document.getElementById("outflowModal").close();
   document.getElementById("outflowForm").reset();
   document.getElementById("outflowDate").value=todayISO();
   renderAll();
 }
 
-function saveExpense(e){
+async function saveExpense(e){
   e.preventDefault();
-  state.expenses.unshift({id:Date.now(),description:expenseDescription.value.trim(),category:expenseCategory.value.trim(),value:Number(expenseValue.value),due_date:expenseDueDate.value,paid:false,recurring:expenseRecurring.checked});
-  saveState();expenseModal.close();expenseForm.reset();renderAll();
+  const newExpense={id:Date.now(),description:expenseDescription.value.trim(),category:expenseCategory.value.trim(),value:Number(expenseValue.value),due_date:expenseDueDate.value,paid:false,recurring:expenseRecurring.checked};
+  state.expenses.unshift(newExpense);
+  saveState();
+  if(supabaseClient){
+    try{await syncExpenseToSupabase(newExpense);saveState()}catch(err){console.error(err);alert("Gasto salvo localmente, mas houve erro ao sincronizar.")}
+  }
+  expenseModal.close();expenseForm.reset();renderAll();
 }
 function renderExpenses(){
   const exactTotal=state.expenses.reduce((sum,e)=>sum+Number(e.value||0),0);
@@ -640,6 +861,17 @@ function renderExpenses(){
     ? state.expenses.map(e=>`<tr><td>${escapeHTML(e.description)}</td><td>${escapeHTML(e.category||"-")}</td><td>${new Date(e.due_date+"T12:00:00").toLocaleDateString("pt-BR")}</td><td>${money(e.value)}</td><td>${e.paid?"Pago":"Pendente"}${e.recurring?" • Fixo":""}</td><td><button class="secondary-btn" onclick="toggleExpense(${e.id})">${e.paid?"Desmarcar":"Marcar pago"}</button> <button class="secondary-btn" onclick="deleteExpense(${e.id})">Excluir</button></td></tr>`).join("")
     : `<tr><td colspan="6" class="muted">Nenhuma conta adicionada.</td></tr>`;
 }
-function toggleExpense(id){const e=state.expenses.find(x=>x.id===id);e.paid=!e.paid;saveState();renderAll()}
-function deleteExpense(id){if(confirm("Excluir gasto?")){state.expenses=state.expenses.filter(e=>e.id!==id);saveState();renderAll()}}
+async function toggleExpense(id){
+  const e=state.expenses.find(x=>x.id===id);
+  e.paid=!e.paid;
+  saveState();renderAll();
+  if(supabaseClient){try{await syncExpenseToSupabase(e);saveState()}catch(err){console.error(err)}}
+}
+async function deleteExpense(id){
+  if(confirm("Excluir gasto?")){
+    state.expenses=state.expenses.filter(e=>e.id!==id);
+    saveState();renderAll();
+    if(supabaseClient){try{await deleteExpenseFromSupabase(id)}catch(err){console.error(err)}}
+  }
+}
 function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
