@@ -484,9 +484,10 @@ function changeOrderDay(delta){
 function setupOrderDragAndDrop(){
   document.querySelectorAll(".order-card[draggable='true']").forEach(card=>{
     card.addEventListener("dragstart",e=>{
-      draggedOrderId=Number(card.dataset.orderId);
+      draggedOrderId=card.dataset.orderId;
       card.classList.add("dragging");
       e.dataTransfer.effectAllowed="move";
+      e.dataTransfer.setData("text/plain",card.dataset.orderId);
     });
     card.addEventListener("dragend",()=>{
       card.classList.remove("dragging");
@@ -502,26 +503,42 @@ function setupKanbanDropZones(){
     const list=document.getElementById(id), column=list.closest(".kanban-column");
     column.addEventListener("dragover",e=>{e.preventDefault();column.classList.add("drag-over");});
     column.addEventListener("dragleave",()=>column.classList.remove("drag-over"));
-    column.addEventListener("drop",e=>{e.preventDefault();column.classList.remove("drag-over");if(draggedOrderId)moveOrder(draggedOrderId,status);});
+    column.addEventListener("drop",e=>{e.preventDefault();column.classList.remove("drag-over");if(draggedOrderId!==null)moveOrder(draggedOrderId,status);});
   });
 }
 function orderCard(o){
+  const safeId=JSON.stringify(String(o.id));
   let moveBtns="";
-  if(o.status==="pending") moveBtns=`<button onclick="moveOrder(${o.id},'preparing')">Preparar →</button>`;
-  if(o.status==="preparing") moveBtns=`<button onclick="moveOrder(${o.id},'pending')">← Voltar</button><button onclick="moveOrder(${o.id},'delivered')">Entregar →</button>`;
-  if(o.status==="delivered") moveBtns=`<button onclick="moveOrder(${o.id},'preparing')">← Reabrir</button>`;
-  return `<article class="order-card" draggable="true" data-order-id="${o.id}">
+  if(o.status==="pending"){
+    moveBtns=`<button type="button" onclick='moveOrder(${safeId},"preparing")'>Preparar →</button>`;
+  }
+  if(o.status==="preparing"){
+    moveBtns=`<button type="button" onclick='moveOrder(${safeId},"pending")'>← Voltar</button>
+              <button type="button" onclick='moveOrder(${safeId},"delivered")'>Entregar →</button>`;
+  }
+  if(o.status==="delivered"){
+    moveBtns=`<button type="button" onclick='moveOrder(${safeId},"preparing")'>← Reabrir</button>`;
+  }
+
+  return `<article class="order-card" draggable="true" data-order-id="${escapeHTML(String(o.id))}">
+    <div class="drag-hint" title="Arraste para outra coluna">⋮⋮ Arraste</div>
     <h4>#${String(o.id).slice(-4)} — ${escapeHTML(o.name)}</h4>
     <p><b>Pedido:</b> ${escapeHTML(o.items)}</p>
     <p><b>Valor:</b> ${money(o.value)}</p>
     <p><b>Pagamento:</b> ${paymentLabel(o.payment_method)}</p>
-    <div class="order-meta"><span>${new Date(o.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>
-      <span class="badge ${o.payment_status==="paid"?"paid":"unpaid"}">${o.payment_status==="paid"?"PAGO":"NÃO PAGO"}</span></div>
-    <div class="order-actions">${moveBtns}<button onclick="editOrder(${o.id})">Editar</button><button onclick="deleteOrder(${o.id})">Excluir</button></div>
+    <div class="order-meta">
+      <span>${new Date(o.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>
+      <span class="badge ${o.payment_status==="paid"?"paid":"unpaid"}">${o.payment_status==="paid"?"PAGO":"NÃO PAGO"}</span>
+    </div>
+    <div class="order-actions">
+      ${moveBtns}
+      <button type="button" onclick='editOrder(${safeId})'>Editar</button>
+      <button type="button" onclick='deleteOrder(${safeId})'>Excluir</button>
+    </div>
   </article>`;
 }
 async function moveOrder(id,status){
-  const o=state.orders.find(x=>x.id===id);
+  const o=state.orders.find(x=>String(x.id)===String(id));
   if(o){
     o.status=status;
     saveState();
@@ -531,10 +548,10 @@ async function moveOrder(id,status){
     }
   }
 }
-function editOrder(id){openOrderModal(state.orders.find(o=>o.id===id))}
+function editOrder(id){openOrderModal(state.orders.find(o=>String(o.id)===String(id)))}
 async function deleteOrder(id){
   if(confirm("Excluir este pedido?")){
-    state.orders=state.orders.filter(o=>o.id!==id);
+    state.orders=state.orders.filter(o=>String(o.id)!==String(id));
     saveState();
     renderAll();
     if(supabaseClient){
@@ -667,11 +684,11 @@ function renderDebts(){
   document.getElementById("totalReceivable").textContent=money(receivable);
   debtsList.innerHTML=debts.length?debts.map(o=>`<article class="debt-card urgent-debt-card">
     <div><b>${escapeHTML(o.name)}</b><p>${escapeHTML(o.items)} • <strong>${money(o.value)}</strong></p><small>⚠ Devendo há ${daysBetween(o.created_at)} dia(s)</small></div>
-    <div class="debt-actions"><button class="primary-btn" onclick="receiveDebt(${o.id})">Receber pagamento</button></div>
+    <div class="debt-actions"><button class="primary-btn" onclick='receiveDebt(${JSON.stringify(String(o.id))})' >Receber pagamento</button></div>
   </article>`).join(""):`<div class="no-debt-message">✓ Nenhuma dívida em aberto.</div>`;
 }
 async function receiveDebt(id){
-  const o=state.orders.find(x=>x.id===id); if(!o)return;
+  const o=state.orders.find(x=>String(x.id)===String(id)); if(!o)return;
   const method=prompt("Forma de pagamento: pix, cash, credit ou debit","pix");
   if(!["pix","cash","credit","debit"].includes(method||"")) return alert("Forma inválida.");
   o.payment_method=method;o.payment_status="paid";o.paid_at=nowISO();o.paid_date=todayISO();saveState();renderAll();
@@ -858,18 +875,31 @@ function renderExpenses(){
   if(totalEl) totalEl.textContent=money(exactTotal);
 
   expensesTable.innerHTML=state.expenses.length
-    ? state.expenses.map(e=>`<tr><td>${escapeHTML(e.description)}</td><td>${escapeHTML(e.category||"-")}</td><td>${new Date(e.due_date+"T12:00:00").toLocaleDateString("pt-BR")}</td><td>${money(e.value)}</td><td>${e.paid?"Pago":"Pendente"}${e.recurring?" • Fixo":""}</td><td><button class="secondary-btn" onclick="toggleExpense(${e.id})">${e.paid?"Desmarcar":"Marcar pago"}</button> <button class="secondary-btn" onclick="deleteExpense(${e.id})">Excluir</button></td></tr>`).join("")
+    ? state.expenses.map(e=>{
+        const safeId=JSON.stringify(String(e.id));
+        return `<tr>
+          <td>${escapeHTML(e.description)}</td>
+          <td>${escapeHTML(e.category||"-")}</td>
+          <td>${new Date(e.due_date+"T12:00:00").toLocaleDateString("pt-BR")}</td>
+          <td>${money(e.value)}</td>
+          <td>${e.paid?"Pago":"Pendente"}${e.recurring?" • Fixo":""}</td>
+          <td>
+            <button class="secondary-btn" onclick='toggleExpense(${safeId})'>${e.paid?"Desmarcar":"Marcar pago"}</button>
+            <button class="secondary-btn" onclick='deleteExpense(${safeId})'>Excluir</button>
+          </td>
+        </tr>`;
+      }).join("")
     : `<tr><td colspan="6" class="muted">Nenhuma conta adicionada.</td></tr>`;
 }
 async function toggleExpense(id){
-  const e=state.expenses.find(x=>x.id===id);
+  const e=state.expenses.find(x=>String(x.id)===String(id));
   e.paid=!e.paid;
   saveState();renderAll();
   if(supabaseClient){try{await syncExpenseToSupabase(e);saveState()}catch(err){console.error(err)}}
 }
 async function deleteExpense(id){
   if(confirm("Excluir gasto?")){
-    state.expenses=state.expenses.filter(e=>e.id!==id);
+    state.expenses=state.expenses.filter(e=>String(e.id)!==String(id));
     saveState();renderAll();
     if(supabaseClient){try{await deleteExpenseFromSupabase(id)}catch(err){console.error(err)}}
   }

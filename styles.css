@@ -425,3 +425,52 @@ body{
 }
 
 .login-error{min-height:20px;color:#c62828;font-size:14px;font-weight:700}
+
+
+/* SUPABASE V2 — drag-and-drop + rodapé */
+.order-card{
+  cursor:grab;
+  transition:transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+.order-card:active{cursor:grabbing}
+.order-card.dragging{
+  opacity:.52;
+  transform:scale(.985);
+  box-shadow:0 14px 35px rgba(20,35,55,.16);
+}
+.kanban-column.drag-over{
+  outline:3px dashed rgba(13,110,253,.42);
+  outline-offset:-6px;
+}
+.drag-hint{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  margin-bottom:8px;
+  color:#8995a8;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.35px;
+  text-transform:uppercase;
+  user-select:none;
+}
+.app-footer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:30px 12px 12px;
+  color:#8a95a7;
+  font-size:12px;
+  letter-spacing:.2px;
+}
+.app-footer strong{
+  color:#34445d;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+@media(max-width:760px){
+  .drag-hint{display:none}
+  .app-footer{padding-top:22px}
+}
