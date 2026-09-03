@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adega Miami — Gestão</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AM</div>
+        <div>
+          <strong>Adega Miami</strong>
+          <small>Gestão & Financeiro</small>
+        </div>
+      </div>
+
+      <nav class="menu">
+        <button class="menu-item active" data-view="dashboard">Dashboard</button>
+        <button class="menu-item" data-view="pedidos">Pedidos</button>
+        <button class="menu-item" data-view="clientes">Clientes</button>
+        <button class="menu-item" data-view="dividas">Não pagos</button>
+        <button class="menu-item" data-view="financeiro">Financeiro</button>
+        <button class="menu-item" data-view="calendario">Calendário</button>
+        <button class="menu-item" data-view="gastos">Gastos</button>
+        <button class="menu-item owner-only" data-view="usuarios">Usuários</button>
+        <button class="menu-item owner-only" data-view="configuracoes">Configurações</button>
+        <button class="menu-item owner-only" data-view="backup">💾 Backup</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <label>Perfil</label>
+        <select id="roleSelect">
+          <option value="owner">DONO</option>
+          <option value="cashier">CAIXA</option>
+          <option value="employee">FUNCIONÁRIO</option>
+        </select>
+        <div class="connection-status" id="connectionStatus">Modo demonstração</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" id="menuToggle">☰</button>
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="todayLabel"></p>
+        </div>
+        <div class="topbar-actions">
+          <button class="danger-btn" id="newOutflowBtn">− Nova saída</button>
+          <button class="primary-btn" id="newOrderBtn">+ Novo pedido</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboard">
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span>Saldo do dia</span>
+            <div class="value-line"><strong id="dailyBalance">R$ 0,00</strong><button class="eye-btn" data-target="dailyBalance">👁</button></div>
+            <small>Detalhamento completo logo abaixo</small>
+          </article>
+          <article class="stat-card">
+            <span>Saldo do mês</span>
+            <div class="value-line"><strong id="monthlyBalance">R$ 0,00</strong><button class="eye-btn" data-target="monthlyBalance">👁</button></div>
+            <small>Detalhamento completo logo abaixo</small>
+          </article>
+          <article class="stat-card">
+            <span>Pedidos hoje</span>
+            <strong id="ordersToday">0</strong>
+            <small id="ticketAverage">Ticket médio: R$ 0,00</small>
+          </article>
+          <article class="stat-card debt-alert-card">
+            <span>NÃO PAGOS</span>
+            <strong id="openDebt">R$ 0,00</strong>
+            <small id="debtCount">0 clientes com dívida</small>
+          </article>
+        </div>
+
+        <div class="balance-breakdown-wrap single">
+          <article class="panel breakdown-panel">
+            <div class="panel-head">
+              <h3>Detalhamento do dia</h3>
+              <span class="breakdown-tag">Resumo maior e organizado</span>
+            </div>
+            <div id="dailyDetailGrid" class="breakdown-grid"></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid dashboard-grid-single">
+          <article class="panel">
+            <div class="panel-head"><h3>Resumo financeiro de hoje</h3></div>
+            <div id="financialSummary" class="summary-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="pedidos">
+        <div class="orders-date-toolbar panel">
+          <button class="secondary-btn" id="prevOrderDay">← Dia anterior</button>
+          <div class="order-date-center">
+            <strong id="ordersDateLabel">Pedidos de hoje</strong>
+            <input type="date" id="ordersDateInput" />
+          </div>
+          <div class="order-date-actions">
+            <button class="secondary-btn" id="todayOrdersBtn">Hoje</button>
+            <button class="secondary-btn" id="nextOrderDay">Próximo dia →</button>
+          </div>
+        </div>
+        <div class="kanban-wrap">
+          <div class="kanban-column red">
+            <div class="kanban-head"><span>Não entregue</span><b id="countPending">0</b></div>
+            <div class="order-list" id="pendingOrders"></div>
+          </div>
+          <div class="kanban-column yellow">
+            <div class="kanban-head"><span>Em preparação</span><b id="countPreparing">0</b></div>
+            <div class="order-list" id="preparingOrders"></div>
+          </div>
+          <div class="kanban-column green">
+            <div class="kanban-head"><span>Entregue</span><b id="countDelivered">0</b></div>
+            <div class="order-list" id="deliveredOrders"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="clientes">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Clientes</h3>
+            <input id="clientSearch" class="search" placeholder="Pesquisar nome..." />
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Total gasto</th><th>Dívida</th><th>Histórico</th></tr></thead>
+            <tbody id="clientsTable"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section class="view" id="dividas">
+        <div class="debt-zone">
+          <div class="debt-zone-head">
+            <div>
+              <h2>⚠ NÃO PAGOS / FIADOS</h2>
+              <p>Área de cobrança — valores pendentes dos clientes.</p>
+            </div>
+          </div>
+          <div class="debt-summary-grid">
+            <article class="debt-summary-card">
+              <span>Total de devedores</span>
+              <strong id="totalDebtors">0</strong>
+            </article>
+            <article class="debt-summary-card">
+              <span>Total a receber</span>
+              <strong id="totalReceivable">R$ 0,00</strong>
+            </article>
+          </div>
+          <div id="debtsList" class="debt-list"></div>
+        </div>
+      </section>
+
+      <section class="view" id="financeiro">
+        <div class="stat-grid finance-grid">
+          <article class="stat-card"><span>PIX hoje</span><div class="value-line"><strong id="financePix">R$ 0,00</strong><button class="eye-btn" data-target="financePix">👁</button></div></article>
+          <article class="stat-card"><span>Dinheiro hoje</span><div class="value-line"><strong id="financeCash">R$ 0,00</strong><button class="eye-btn" data-target="financeCash">👁</button></div></article>
+          <article class="stat-card"><span>Cartão hoje</span><div class="value-line"><strong id="financeCard">R$ 0,00</strong><button class="eye-btn" data-target="financeCard">👁</button></div></article>
+          <article class="stat-card"><span>Entradas hoje</span><div class="value-line"><strong id="todayIncome">R$ 0,00</strong><button class="eye-btn" data-target="todayIncome">👁</button></div></article>
+          <article class="stat-card"><span>Saídas hoje</span><div class="value-line"><strong id="todayExpenses">R$ 0,00</strong><button class="eye-btn" data-target="todayExpenses">👁</button></div></article>
+          <article class="stat-card"><span>Resultado hoje</span><div class="value-line"><strong id="todayResult">R$ 0,00</strong><button class="eye-btn" data-target="todayResult">👁</button></div></article>
+          <article class="stat-card"><span>Resultado do mês</span><div class="value-line"><strong id="monthResult">R$ 0,00</strong><button class="eye-btn" data-target="monthResult">👁</button></div></article>
+        </div>
+
+        <article class="panel breakdown-panel finance-month-panel">
+          <div class="panel-head">
+            <div>
+              <h3>Detalhamento do mês</h3>
+              <p class="muted">Resumo das entradas e saídas do mês atual.</p>
+            </div>
+            <span class="breakdown-tag">Resumo mensal</span>
+          </div>
+          <div id="monthlyDetailGrid" class="breakdown-grid finance-month-grid"></div>
+        </article>
+
+        <div class="panel">
+          <div class="panel-head finance-history-head">
+            <div>
+              <h3>Movimentações</h3>
+              <p class="muted">Escolha uma data para ver somente as entradas registradas naquele dia.</p>
+            </div>
+            <div class="export-controls">
+              <input type="date" id="financeFilterDate" />
+              <button class="secondary-btn" id="todayFinanceBtn">Hoje</button>
+              <button class="primary-btn" id="exportDayBtn">Exportar dia</button>
+            </div>
+          </div>
+          <div id="financeDaySummary" class="finance-day-summary"></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Forma</th><th>Valor</th></tr></thead>
+            <tbody id="transactionsTable"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section class="view" id="calendario">
+        <div class="panel">
+          <div class="panel-head">
+            <button class="secondary-btn" id="prevMonth">←</button>
+            <h3 id="calendarTitle">Calendário</h3>
+            <button class="secondary-btn" id="nextMonth">→</button>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+          <div id="calendarDayDetails" class="calendar-day-details">Clique em um dia para ver as entradas, saídas e resultado.</div>
+        </div>
+      </section>
+
+      <section class="view" id="gastos">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Gastos do mês</h3><p class="expense-total">Total das contas adicionadas: <strong id="expensesMonthTotal">R$ 0,00</strong></p></div>
+            <button class="primary-btn" id="newExpenseBtn">+ Novo gasto</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+            <tbody id="expensesTable"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section class="view owner-only-view" id="usuarios">
+        <div class="panel">
+          <div class="panel-head"><h3>Perfis de acesso</h3></div>
+          <div class="role-cards">
+            <article><b>DONO</b><p>Acesso completo a pedidos, financeiro, dívidas, gastos, usuários e configurações.</p></article>
+            <article><b>CAIXA</b><p>Pedidos, clientes, pagamentos e quitação de dívidas.</p></article>
+            <article><b>FUNCIONÁRIO</b><p>Visualiza e movimenta pedidos. Sem acesso ao financeiro.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view owner-only-view" id="configuracoes">
+        <div class="panel">
+          <div class="panel-head"><h3>Configurações Supabase</h3></div>
+          <p class="muted">Preencha em <code>app.js</code> as variáveis SUPABASE_URL e SUPABASE_ANON_KEY. Sem elas, o sistema funciona em modo demonstração usando o navegador.</p>
+        </div>
+      </section>
+
+      <section class="view owner-only-view" id="backup">
+        <div class="panel backup-panel">
+          <div class="panel-head">
+            <div>
+              <h3>Backup do sistema</h3>
+              <p class="muted">Proteja pedidos, clientes, dívidas, gastos e saídas.</p>
+            </div>
+            <span class="backup-status-pill" id="backupStatus">Backup automático ativo</span>
+          </div>
+
+          <div class="backup-grid">
+            <article class="backup-card">
+              <div class="backup-icon">💾</div>
+              <div>
+                <h4>Exportar backup</h4>
+                <p>Baixa um arquivo completo com todos os dados atuais do sistema.</p>
+                <button class="primary-btn backup-action-btn" id="exportBackupBtn">💾 EXPORTAR BACKUP</button>
+              </div>
+            </article>
+
+            <article class="backup-card">
+              <div class="backup-icon">📥</div>
+              <div>
+                <h4>Importar backup</h4>
+                <p>Restaura os dados de um arquivo de backup salvo anteriormente.</p>
+                <input type="file" id="importBackupInput" accept=".json,application/json" hidden />
+                <button class="secondary-btn backup-action-btn" id="importBackupBtn">📥 IMPORTAR BACKUP</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="backup-info">
+            <strong>Backup automático local</strong>
+            <p>O sistema salva uma cópia interna atualizada diariamente no navegador. Para baixar um arquivo no computador, use o botão Exportar Backup — navegadores exigem um clique para iniciar downloads.</p>
+            <small id="lastBackupLabel">Último backup local: ainda não realizado</small>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <dialog id="orderModal">
+    <form method="dialog" class="modal-card" id="orderForm">
+      <div class="modal-head"><h3 id="orderModalTitle">Novo pedido</h3><button value="cancel" class="icon-btn">✕</button></div>
+      <input type="hidden" id="orderId" />
+      <label>Nome do cliente<input required id="orderName" /></label>
+      <label>Telefone<input id="orderPhone" placeholder="(11) 99999-9999" /></label>
+      <label>Pedido<textarea required id="orderItems" placeholder="Ex.: 2 Heineken + 1 gelo"></textarea></label>
+      <label>Valor do pedido<input required type="number" min="0" step="0.01" id="orderValue" /></label>
+      <label>Pagamento
+        <select id="paymentMethod">
+          <option value="pix">Pix</option>
+          <option value="cash">Dinheiro</option>
+          <option value="credit">Cartão crédito</option>
+          <option value="debit">Cartão débito</option>
+        </select>
+      </label>
+      <label>Status do pagamento
+        <select id="paymentStatus">
+          <option value="paid">Pago</option>
+          <option value="unpaid">Não pago / Fiado</option>
+        </select>
+      </label>
+      <div class="modal-actions"><button value="cancel" class="secondary-btn">Cancelar</button><button type="submit" value="default" class="primary-btn">Salvar pedido</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="expenseModal">
+    <form method="dialog" class="modal-card" id="expenseForm">
+      <div class="modal-head"><h3>Novo gasto</h3><button value="cancel" class="icon-btn">✕</button></div>
+      <label>Descrição<input required id="expenseDescription" /></label>
+      <label>Categoria<input id="expenseCategory" placeholder="Aluguel, energia..." /></label>
+      <label>Valor<input required type="number" min="0" step="0.01" id="expenseValue" /></label>
+      <label>Vencimento<input required type="date" id="expenseDueDate" /></label>
+      <label><span class="checkline"><input type="checkbox" id="expenseRecurring" /> Repetir todo mês</span></label>
+      <div class="modal-actions"><button value="cancel" class="secondary-btn">Cancelar</button><button type="submit" value="default" class="primary-btn">Salvar gasto</button></div>
+    </form>
+  </dialog>
+
+
+  <dialog id="outflowModal">
+    <form method="dialog" class="modal-card" id="outflowForm">
+      <div class="modal-head"><h3>Nova saída</h3><button value="cancel" class="icon-btn">✕</button></div>
+      <label>Descrição da saída
+        <input required id="outflowDescription" placeholder="Ex.: compra de gelo, motoboy, limpeza..." />
+      </label>
+      <label>Valor
+        <input required type="number" min="0.01" step="0.01" id="outflowValue" />
+      </label>
+      <label>Forma de saída
+        <select id="outflowMethod">
+          <option value="pix">Pix</option>
+          <option value="cash">Dinheiro</option>
+          <option value="credit">Cartão crédito</option>
+          <option value="debit">Cartão débito</option>
+          <option value="other">Outro</option>
+        </select>
+      </label>
+      <label>Data
+        <input required type="date" id="outflowDate" />
+      </label>
+      <div class="modal-actions">
+        <button value="cancel" class="secondary-btn">Cancelar</button>
+        <button type="submit" value="default" class="danger-btn">Registrar saída</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="clientModal">
+    <div class="modal-card">
+      <div class="modal-head"><h3 id="clientModalTitle">Cliente</h3><button class="icon-btn" onclick="document.getElementById('clientModal').close()">✕</button></div>
+      <div id="clientHistory"></div>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
