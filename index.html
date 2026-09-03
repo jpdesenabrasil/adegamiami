@@ -41,6 +41,7 @@
           <option value="employee">FUNCIONÁRIO</option>
         </select>
         <div class="connection-status" id="connectionStatus">Modo demonstração</div>
+        <button class="logout-btn" id="logoutBtn" type="button">Sair da conta</button>
       </div>
     </aside>
 
@@ -298,7 +299,13 @@
 
   <dialog id="loginModal">
     <form method="dialog" class="modal-card" id="loginForm">
-      <div class="modal-head"><h3>Entrar no Adega Miami</h3></div>
+      <div class="modal-head login-brand-head">
+        <div>
+          <small>ADEGA MIAMI</small>
+          <h3>Entrar no sistema</h3>
+          <p>Acesso restrito aos usuários autorizados.</p>
+        </div>
+      </div>
       <label>E-mail<input required type="email" id="loginEmail" autocomplete="username" /></label>
       <label>Senha<input required type="password" id="loginPassword" autocomplete="current-password" /></label>
       <div id="loginError" class="login-error"></div>

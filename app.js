@@ -120,6 +120,25 @@ let selectedOrderISO = todayISO();
 let selectedFinanceISO = todayISO();
 
 
+
+function setAuthLocked(locked){
+  document.body.classList.toggle("auth-locked",Boolean(locked));
+  const logoutBtn=document.getElementById("logoutBtn");
+  if(logoutBtn) logoutBtn.style.display=locked?"none":"";
+}
+
+function showLogin(){
+  setAuthLocked(true);
+  const modal=document.getElementById("loginModal");
+  if(modal && !modal.open) modal.showModal();
+}
+
+function hideLogin(){
+  const modal=document.getElementById("loginModal");
+  if(modal?.open) modal.close();
+  setAuthLocked(false);
+}
+
 async function loadFromSupabase(){
   if(!supabaseClient) return false;
 
@@ -261,7 +280,11 @@ async function loginSupabase(email,password){
 }
 
 async function logoutSupabase(){
-  if(supabaseClient) await supabaseClient.auth.signOut();
+  if(supabaseClient){
+    await supabaseClient.auth.signOut();
+  }
+  document.getElementById("connectionStatus").textContent="Desconectado";
+  showLogin();
 }
 
 function seedState(){
@@ -286,6 +309,7 @@ function saveState(){
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  setAuthLocked(true);
   document.getElementById("connectionStatus").textContent = supabaseClient ? "Supabase conectado" : "Modo demonstração";
   document.getElementById("todayLabel").textContent = new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
   bindUI();
@@ -296,15 +320,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if(session){
       try{
         await loadFromSupabase();
+        hideLogin();
         document.getElementById("connectionStatus").textContent="Online • Supabase";
       }catch(err){
         console.error(err);
         document.getElementById("connectionStatus").textContent="Erro ao sincronizar";
         renderAll();
+        showLogin();
       }
     }else{
       renderAll();
-      document.getElementById("loginModal").showModal();
+      showLogin();
     }
   }else{
     renderAll();
@@ -320,6 +346,15 @@ function bindUI(){
     document.getElementById("outflowModal").showModal();
   };
   document.getElementById("newExpenseBtn").onclick=()=>document.getElementById("expenseModal").showModal();
+  document.getElementById("loginModal").addEventListener("cancel",e=>{
+    if(document.body.classList.contains("auth-locked")) e.preventDefault();
+  });
+
+  document.getElementById("logoutBtn").onclick=async ()=>{
+    if(!confirm("Deseja sair da sua conta?")) return;
+    await logoutSupabase();
+  };
+
   document.getElementById("loginForm").addEventListener("submit", async e=>{
     e.preventDefault();
     const email=document.getElementById("loginEmail").value.trim();
@@ -328,7 +363,7 @@ function bindUI(){
     errorEl.textContent="";
     try{
       await loginSupabase(email,password);
-      document.getElementById("loginModal").close();
+      hideLogin();
       document.getElementById("connectionStatus").textContent="Online • Supabase";
     }catch(err){
       errorEl.textContent="Não foi possível entrar. Confira e-mail e senha.";
